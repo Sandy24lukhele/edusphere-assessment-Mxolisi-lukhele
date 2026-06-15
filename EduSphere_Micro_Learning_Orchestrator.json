@@ -1,0 +1,400 @@
+{
+  "name": "EduSphere_Micro_Learning_Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "student-assessment",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8bac1ca9-9995-444f-98fd-bcc340025be0",
+      "name": "Webhook",
+      "webhookId": "2335e142-3125-41fa-9fd9-8247be5aa8ca"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "399c8a70-eb11-4574-8a8b-a3526de52f24",
+              "name": "student_id",
+              "value": "={{$json.body.student_id}}",
+              "type": "string"
+            },
+            {
+              "id": "a035ef37-5baa-4c33-baea-647909f7aeb8",
+              "name": "subject",
+              "value": "={{$json.body.subject}}",
+              "type": "string"
+            },
+            {
+              "id": "3d27ef0b-0463-4284-ad98-5dd343c3dab1",
+              "name": "language",
+              "value": "={{$json.body.language}}",
+              "type": "string"
+            },
+            {
+              "id": "4b8807b7-e56a-4bf8-a10d-60e972e901c5",
+              "name": "student_answer",
+              "value": "={{$json.body.student_answer}}",
+              "type": "string"
+            },
+            {
+              "id": "731d5be3-72b3-49ca-80f4-2df9fa8eae6f",
+              "name": "ai_prompt_context",
+              "value": "=Subject: {{$json.body.subject}} Answer: {{$json.body.student_answer}} Language: {{$json.body.language}}",
+              "type": "string"
+            },
+            {
+              "id": "462adc3c-7734-46d4-8251-84622aa27b21",
+              "name": "ai_input",
+              "value": "=Evaluate this student answer.  Subject: {{$json.body.subject}} Language: {{$json.body.language}} Answer: {{$json.body.student_answer}}",
+              "type": "string"
+            },
+            {
+              "id": "528dc646-b27d-4113-8e5f-8886d6abbbec",
+              "name": "question",
+              "value": "={{$json.body.question}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ],
+      "id": "c07a5a4a-4306-4b76-a90e-a662c21ad9fd",
+      "name": "Function Node"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        480,
+        96
+      ],
+      "id": "4f4ad4e7-970f-4a2d-9ad2-b07ef2e3e486",
+      "name": "When chat message received",
+      "webhookId": "6fcff987-47b3-448b-a8f5-c14218af04fe"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Hi, can you help me evaluate this student's answer?\n\nSubject: {{$json.subject}}\nLanguage: {{$json.language}}\n\nQuestion:\n{{$json.question}}\n\nStudent Answer:\n{{$json.student_answer}}\n\nPlease evaluate whether the student's answer correctly answers the question.\n\nGrade it from 0 to 10 and provide feedback in the language specified above.\n\nReturn ONLY JSON:\n{\n  \"score\": number,\n  \"feedback\": \"text\"\n}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an education assessment AI.  Your task: 1. Read the question. 2. Evaluate whether the student's answer correctly answers the question. 3. Assign a score from 0 to 10. 4. Provide feedback in the specified language.  Rules: - If language is isiZulu, feedback must be entirely in isiZulu. - Be strict but fair. - Scientifically incorrect answers should receive a low score. - Return ONLY valid JSON.  Output: {   \"score\": number,   \"feedback\": \"string\" }"
+            },
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "=Language: {{$json.language}}\n\nSubject: {{$json.subject}}\n\nQuestion:\n{{$json.body.question}}\n\nStudent Answer:\n{{$json.student_answer}}\n\nEvaluate the answer against the question and return JSON only."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        400,
+        0
+      ],
+      "id": "d4fa6d01-c1a2-4715-afab-6b96f5cb3bc6",
+      "name": "Basic LLM Chain",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        672,
+        176
+      ],
+      "id": "f47f22a1-83eb-4133-a7a8-c205c899cb82",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "b6XLTu7LaEL4FOsj",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "21676850-e8a0-466a-866a-77d95a73d128",
+              "leftValue": "={{ Number($json.score) }}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        848,
+        0
+      ],
+      "id": "d554fb2f-8a3a-4cb8-9c8a-65ffefd4a242",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "tableId": "interaction_history",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "student_id",
+              "fieldValue": "={{$node[\"Function Node\"].json.student_id}}"
+            },
+            {
+              "fieldId": "subject",
+              "fieldValue": "={{$node[\"Function Node\"].json.subject}}"
+            },
+            {
+              "fieldId": "student_answer",
+              "fieldValue": "={{$node[\"Function Node\"].json.student_answer}}"
+            },
+            {
+              "fieldId": "ai_score",
+              "fieldValue": "={{$json.score}}"
+            },
+            {
+              "fieldId": "ai_feedback",
+              "fieldValue": "={{$json.feedback}}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "Approved"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        -16
+      ],
+      "id": "9d8a72a2-66a4-444a-9993-4093f2a149bf",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "foSdy5wQrCmYTvgm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "interaction_history",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "student_id",
+              "fieldValue": "={{$node[\"Function Node\"].json.student_id}}"
+            },
+            {
+              "fieldId": "subject",
+              "fieldValue": "={{$node[\"Function Node\"].json.subject}}"
+            },
+            {
+              "fieldId": "student_answer",
+              "fieldValue": "={{$node[\"Function Node\"].json.student_answer}}"
+            },
+            {
+              "fieldId": "ai_score",
+              "fieldValue": "={{ Number($json.score) }}"
+            },
+            {
+              "fieldId": "ai_feedback",
+              "fieldValue": "={{$json.feedback}}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "Flagged for Teacher Review"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        144
+      ],
+      "id": "ac28b02c-5742-4683-9b9c-2276205a69a0",
+      "name": "Create a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "foSdy5wQrCmYTvgm",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "00612ba4-da52-458e-adf9-e3242920980b",
+              "name": "score",
+              "value": "={{ JSON.parse($json.text).score }}",
+              "type": "string"
+            },
+            {
+              "id": "8aaeb7ed-3a4d-46ef-b6e3-aaae8843f392",
+              "name": "feedback",
+              "value": "={{ JSON.parse($json.text).feedback }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        144
+      ],
+      "id": "0f3c2433-a0a5-497a-b4dc-f0a3891f12e6",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Function Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function Node": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d201f5f7-cb6b-4e3f-b644-4b7e4b8d690f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "479020f870f0b60195cf7b9cc6b11c009ffafd2cd47aa36ff59446621a8edc75"
+  },
+  "nodeGroups": [],
+  "id": "2jKAuMItGcwGc2yt",
+  "tags": []
+}
